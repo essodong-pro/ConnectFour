@@ -1,0 +1,150 @@
+@using ConnectFour
+@inject GameState State
+
+<div class="game-container">
+    <h1>Connect Four</h1>
+    <p class="subtitle">Connect four pieces in a row to win!</p>
+
+    <div class="game-info">
+        <div class="player-card">
+            <span class="player-piece red-piece"></span>
+            <span>Player 1</span>
+        </div>
+
+        <div class="player-card">
+            <span class="player-piece yellow-piece"></span>
+            <span>Player 2</span>
+        </div>
+    </div>
+
+    <div class="status-message">
+        @if (!string.IsNullOrEmpty(winnerMessage))
+        {
+            <h2>@winnerMessage</h2>
+        }
+        else
+        {
+            <h2>Player @State.PlayerTurn's turn</h2>
+        }
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <p class="error-message">@errorMessage</p>
+        }
+    </div>
+
+    <div class="column-buttons">
+        @for (int col = 0; col < 7; col++)
+        {
+            int selectedColumn = col;
+
+            <button class="column-button" @key="selectedColumn" disabled="@(gameOver || State.IsColumnFull(selectedColumn))""
+                    @onclick="() => PlayColumn(selectedColumn)">
+                ↓
+            </button>
+        }
+    </div>
+
+    <div class="game-board">
+        @for (int row = 0; row < 6; row++)
+        {
+            @for (int col = 0; col < 7; col++)
+            {
+                int cellValue = State.GetCell(row, col);
+
+                <div class="cell">
+                    <div class="piece @(cellValue == 1 ? "red-piece" : cellValue == 2 ? "yellow-piece" : "empty-piece")">
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <button class="reset-button" @onclick="ResetGame">
+        New Game
+    </button>
+
+    <section class="history-section">
+        <h2>Move History</h2>
+
+        @if (moveHistory.Count == 0)
+        {
+            <p>No moves yet. Start playing!</p>
+        }
+        else
+        {
+            <ol class="history-list">
+                @foreach (var move in moveHistory)
+                {
+                    <li>
+                        <span class="history-player @(move.Player == 1 ? "history-red" : "history-yellow")">
+                            Player @move.Player
+                        </span>
+                        played column @move.Column
+                    </li>
+                }
+            </ol>
+        }
+    </section>
+</div>
+
+@code {
+    private bool gameOver = false;
+    private string winnerMessage = "";
+    private string errorMessage = "";
+
+    private List<(int Player, int Column)> moveHistory = new();
+
+    private void PlayColumn(int col)
+    {
+        errorMessage = "";
+
+        if (gameOver)
+        {
+            return;
+        }
+
+        int currentPlayer = State.PlayerTurn;
+
+        try
+        {
+            State.PlayPiece((byte)col);
+
+            moveHistory.Add((currentPlayer, col + 1));
+
+            var result = State.CheckForWin();
+
+            switch (result)
+            {
+                case GameState.WinState.Player1_Wins:
+                    winnerMessage = "Player 1 wins!";
+                    gameOver = true;
+                    break;
+
+                case GameState.WinState.Player2_Wins:
+                    winnerMessage = "Player 2 wins!";
+                    gameOver = true;
+                    break;
+
+                case GameState.WinState.Tie:
+                    winnerMessage = "It's a tie!";
+                    gameOver = true;
+                    break;
+            }
+        }
+        catch (ArgumentException ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private void ResetGame()
+    {
+        State.ResetBoard();
+
+        moveHistory.Clear();
+        winnerMessage = "";
+        errorMessage = "";
+        gameOver = false;
+    }
+}
